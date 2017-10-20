@@ -1,0 +1,188 @@
+//+------------------------------------------------------------------+
+//|                                                 RsiMomentViewer.mq4 |
+//|                     Copyright 2017, investdata.000webhostapp.com |
+//|                             https://ichimoku-expert.blogspot.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2017, investdata.000webhostapp.com"
+#property link      "https://ichimoku-expert.blogspot.com"
+#property version   "1.00"
+#property strict
+
+int file_handle=INVALID_HANDLE; // File handle
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+//string exportPath = "C:\\Users\\InvesdataSystems\\Documents\\NetBeansProjects\\investdata\\public_html\\alerts\\data_history";
+
+int OnInit()
+  {
+   ObjectDelete(0, "Text");
+  
+   long chart_ID=0;
+   string name="Text";
+   int sub_window=0;
+   datetime time=0;
+   double price=0;
+   string text="Text";
+   string font="Arial";
+   int font_size=20;
+   color clr=clrAquamarine; // color
+   double angle=0.0; // text slope
+   //ENUM_ANCHOR_POINT anchor=ANCHOR_LEFT_UPPER; // anchor type
+   bool back=false; // in the background
+   bool selection=true; // highlight to move
+   bool hidden=true; // hidden in the object list
+   long z_order=0;
+
+   time=TimeCurrent();
+   price=SymbolInfoDouble(Symbol(),SYMBOL_BID);
+
+   if(ObjectCreate(chart_ID,name,OBJ_TEXT,sub_window,time,price))
+     {
+      //printf("obj created");
+      ObjectSetString(chart_ID,name,OBJPROP_TEXT,text);
+      ObjectSetString(chart_ID,name,OBJPROP_FONT,font);
+      ObjectSetInteger(chart_ID,name,OBJPROP_FONTSIZE,font_size);
+      ObjectSetDouble(chart_ID,name,OBJPROP_ANGLE,angle);
+      ObjectSetInteger(chart_ID,name,OBJPROP_COLOR,clr);
+      ObjectSetInteger(chart_ID,name,OBJPROP_BACK,back);
+      ObjectSetInteger(chart_ID,name,OBJPROP_SELECTABLE,selection);
+      ObjectSetInteger(chart_ID,name,OBJPROP_SELECTED,selection);
+      ObjectSetInteger(chart_ID,name,OBJPROP_HIDDEN,hidden);
+      ObjectSetInteger(chart_ID,name,OBJPROP_ZORDER,z_order);
+     }
+
+
+   return(INIT_SUCCEEDED);
+  }
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+  {
+/*if (reason==3){
+      printf("deinit reason = REASON_CHARTCHANGE");
+   }*/
+
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+bool runOnce=false; // false : run for each tick
+bool dontRunAnymore=false;
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OnTick()
+  {
+
+//printf("running");
+   if(dontRunAnymore==false)
+     {
+      int stotal=SymbolsTotal(true); // seulement les symboles dans le marketwatch (false)
+      ENUM_TIMEFRAMES workingPeriod=PERIOD_M15;
+      for(int sindex=0; sindex<stotal; sindex++)
+        {
+         string sname=SymbolName(sindex,true);
+
+         if(sname==Symbol())
+           {
+
+            bool surachat = false;
+            bool survente = false;
+            double rsi=iRSI(sname,Period(),14,PRICE_CLOSE,0);
+            if(rsi>70 && rsi!=0)
+              {
+               string msg=sname+" : Surachat RSI14 ("+EnumToString((ENUM_TIMEFRAMES) Period())+") = "+DoubleToString(rsi);
+               printf(msg);
+               //SendNotification(msg);
+               surachat=true;
+              }
+            else if(rsi<30 && rsi!=0)
+              {
+               string msg=sname+" : Survente RSI14 ("+EnumToString((ENUM_TIMEFRAMES) Period())+") = "+DoubleToString(rsi);
+               printf(msg);
+               //SendNotification(msg);
+               survente=true;
+              }
+            else
+              {
+               //printf(sname+" : RSI14 "+EnumToString(Period())+" = "+DoubleToString(rsi));
+              }
+
+            //if(sname=="GBPTRY")
+            //{
+            if (sname==Symbol()){
+               double m = iMomentum(sname,Period(),14,PRICE_CLOSE,0);
+               //printf(sname + " : RSI = "+DoubleToString(rsi));
+               ObjectSetString(0,"Text",OBJPROP_TEXT,"RSI=" + DoubleToString(rsi) + " M=" + DoubleToString(m));
+               ObjectSet("Text", OBJPROP_XDISTANCE, 100);
+               ObjectSet("Text", OBJPROP_YDISTANCE, 100);
+            }
+
+            //}
+
+            MqlTick last_tick;
+            double prix_achat;
+            double prix_vente;
+            double spread;
+
+            if(SymbolInfoTick(sname,last_tick))
+              {
+               prix_achat = last_tick.ask;
+               prix_vente = last_tick.bid;
+               spread=prix_achat-prix_vente;
+
+               double stoploss=0;
+               double takeprofit=prix_achat+spread+0.00010;
+               bool enableTrading=false;
+               if(enableTrading)
+                 {
+                  int ticket=OrderSend(sname,OP_BUY,0.1,prix_achat,3,stoploss,takeprofit,"My order",16384,0,clrGreen);
+                  if(ticket<0)
+                    {
+                     Print(sname+" : OrderSend failed with error #",GetLastError());
+                    }
+                  else
+                     Print(sname+" : OrderSend placed successfully");
+                 }
+
+              }
+
+           }
+
+        }
+     }
+   if(runOnce==true) dontRunAnymore=true;
+  }
+//+------------------------------------------------------------------+
+//| Timer function                                                   |
+//+------------------------------------------------------------------+
+
+void OnTimer()
+  {
+  }
+//+------------------------------------------------------------------+
+//| Tester function                                                  |
+//+------------------------------------------------------------------+
+double OnTester()
+  {
+//---
+   double ret=0.0;
+//---
+
+//---
+   return(ret);
+  }
+//+------------------------------------------------------------------+
+//| ChartEvent function                                              |
+//+------------------------------------------------------------------+
+void OnChartEvent(const int id,
+                  const long &lparam,
+                  const double &dparam,
+                  const string &sparam)
+  {
+//---
+
+  }
+//+------------------------------------------------------------------+
